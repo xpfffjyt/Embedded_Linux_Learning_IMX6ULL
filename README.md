@@ -32,7 +32,7 @@
 | 存储 | `mmcblk1p1` 40M FAT → `/boot`；`mmcblk1p2` 7.2G ext4 → `/` |
 | 网络 | ETH1 / ETH2 双网口（**没有 eth0**），另有 `usb0` gadget 网卡 |
 | 调试串口 | **J15 四针（GND / RXD / TXD / VREF）**，需外接 3.3V USB-TTL |
-| USB 控制台 | `COM8` = micro-USB「USB Device」口的 gadget 串口（`ttyGS0`），**Linux 起来后才有** |
+| USB 控制台 | `COM8` = **USB Type-C「USB Device」口**（OTG）虚拟出的 gadget 串口（`ttyGS0`），**Linux 起来后才有**，重启会消失 20 秒左右 |
 | 设备树机制 | U-Boot + `/boot/uEnv.txt` + `.dtbo` overlay（**不是**重编整份 dts） |
 | RGB LED | 已被 `leds-gpio` 占用：红 `GPIO1_IO04`、绿 `GPIO3_IO20`、蓝 `GPIO3_IO19` |
 

@@ -18,7 +18,8 @@
 | 分区 | `mmcblk1p1` 40M FAT → `/boot`；`mmcblk1p2` 7.2G ext4 → `/`；`mmcblk1boot0/boot1` 4M 存 U-Boot |
 | 网口 | **ETH1 / ETH2 两个物理网口，没有 eth0**；另有 `usb0` = 192.168.7.2（g_multi gadget） |
 | 调试串口 | **J15 四针：GND / RXD / TXD / VREF**，JST 端子，需外部 3.3V USB-TTL；板上**无** CH340 |
-| USB 控制台 | `COM8` = micro-USB「USB Device」的 gadget 串口（`ttyGS0`），**仅 Linux 起来后存在**，重启会消失 20 秒左右 |
+| USB 控制台 | `COM8` = **USB Type-C「USB Device」口**（OTG）的 gadget 虚拟串口（`ttyGS0`），**仅 Linux 起来后存在**，重启会消失 20 秒左右 |
+| 其它板载 | 8 位拨码开关可切 NAND/eMMC/SD/USB 启动；micro SD 槽；RTC 电池座（CR1220，未装）；74LV595 扩 8 路 IO |
 | 内核控制台 | `console=ttymxc0`（UART1），即 J15 那根线 |
 | 设备树 | U-Boot + `/boot/uEnv.txt` + `.dtbo` overlay，`enable_uboot_overlays=1`，40 个可用 dtbo 在 `/usr/lib/linux-image-4.19.35-imx6/overlays/` |
 | RGB LED | 被 `leds-gpio`（节点 `normal_led`）占用：红 `GPIO1_IO04`、绿 `GPIO3_IO20`、蓝 `GPIO3_IO19`，全 active-low |
