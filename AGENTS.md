@@ -19,7 +19,7 @@
 | 网口 | **ETH1 / ETH2 两个物理网口，没有 eth0**；另有 `usb0` = 192.168.7.2（g_multi gadget） |
 | 调试串口 | **J15 四针：GND / RXD / TXD / VREF**，JST 端子，需外部 3.3V USB-TTL；板上**无** CH340 |
 | USB 控制台 | `COM8` = **USB Type-C「USB Device」口**（OTG）的 gadget 虚拟串口（`ttyGS0`），**仅 Linux 起来后存在**，重启会消失 20 秒左右 |
-| 其它板载 | 8 位拨码开关可切 NAND/eMMC/SD/USB 启动；micro SD 槽；RTC 电池座（CR1220，未装）；74LV595 扩 8 路 IO |
+| 其它板载 | 8 位拨码：SD 启动=`2/5/8` ON，USB 烧录(eMMC)=`1/4/5/7` ON，USB 烧录(NAND)=`1/3/6` ON，eMMC 正常启动=出厂档（**改前先拍照**）；另有按键法进烧录模式（MODE→RESET→松 RESET→松 MODE）；micro SD 槽；RTC 电池座（CR1220，未装）；74LV595 扩 8 路 IO |
 | 内核控制台 | `console=ttymxc0`（UART1），即 J15 那根线 |
 | 设备树 | U-Boot + `/boot/uEnv.txt` + `.dtbo` overlay，`enable_uboot_overlays=1`，40 个可用 dtbo 在 `/usr/lib/linux-image-4.19.35-imx6/overlays/` |
 | RGB LED | 被 `leds-gpio`（节点 `normal_led`）占用：红 `GPIO1_IO04`、绿 `GPIO3_IO20`、蓝 `GPIO3_IO19`，全 active-low |
