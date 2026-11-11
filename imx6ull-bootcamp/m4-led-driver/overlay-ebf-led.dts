@@ -1,0 +1,113 @@
+/*
+ * overlay-ebf-led.dts - M4: device tree OVERLAY for the ebf_led driver.
+ *
+ * WHY AN OVERLAY AND NOT A FULL .dts?
+ * Your board (embedfire.com Debian image 2025-08-23) boots like this:
+ *
+ *     U-Boot reads /boot/uEnv.txt
+ *       -> loads vmlinuz-4.19.35-imx6 + a base dtb
+ *       -> for every "dtoverlay=" line it runs "fdt apply <file>.dtbo"
+ *       -> bootz
+ *
+ * So the hardware description is "base dtb + a stack of feature overlays".
+ * The base dtb is NOT on the FAT /boot partition (verified: no .dtb there),
+ * and there is no /lib/modules/.../build on the board. Therefore the practical
+ * way to add your own device is an overlay, exactly like the vendor does.
+ *
+ * ---------------------------------------------------------------------------
+ * BUILD (on the Ubuntu host, needs the kernel dts dir for the pinfunc macros)
+ *
+ *   dtc -@ -I dts -O dtb -o ebf-led.dtbo overlay-ebf-led.dts \
+ *       -i ~/imx6ull/kernel/linux-imx/arch/arm/boot/dts
+ *
+ * The -@ flag is MANDATORY: it emits __symbols__, which U-Boot's fdt apply
+ * needs to resolve the &iomuxc / &gpio1 phandles.
+ *
+ * INSTALL (on the board)
+ *
+ *   sudo cp ebf-led.dtbo /usr/lib/linux-image-4.19.35-imx6/overlays/
+ *   echo 'dtoverlay=/usr/lib/linux-image-4.19.35-imx6/overlays/ebf-led.dtbo' \
+ *        | sudo tee -a /boot/uEnv.txt
+ *   sudo reboot
+ *   ls /proc/device-tree | grep ebf          # verify the node appeared
+ *
+ * ---------------------------------------------------------------------------
+ * BEFORE YOU LOAD THIS DRIVER: free the pin, or probe() dies with -EBUSY
+ *
+ * Verified on your board with "gpioinfo | grep used":
+ *     line 4  of gpiochip0 (GPIO1) -> "red"   active-low [used]
+ *     line 19 of gpiochip2 (GPIO3) -> "blue"  active-low [used]
+ *     line 20 of gpiochip2 (GPIO3) -> "green" active-low [used]
+ *
+ * Those lines belong to the leds-gpio driver (DT node "normal_led"), which
+ * comes from the imx-fire-led.dtbo overlay. One GPIO can be owned by exactly
+ * one driver, so comment that overlay out and reboot:
+ *
+ *     sudo cp /boot/uEnv.txt /boot/uEnv.txt.bak
+ *     sudo vim /boot/uEnv.txt
+ *     # dtoverlay=/usr/lib/linux-image-4.19.35-imx6/overlays/imx-fire-led.dtbo
+ *     sudo reboot
+ *     gpioinfo | grep -E 'red|green|blue'    # must print nothing now
+ *
+ * Then this overlay can claim GPIO1_IO04 for the ebf_led driver.
+ * (Red = GPIO1_IO04, green = GPIO3_IO20, blue = GPIO3_IO19 - measured, not
+ * guessed. If you want green/blue instead, change the pad macro and the
+ * <&gpioX N> pair together, they must match.)
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <imx6ul-pinfunc.h>
+
+/ {
+	/* fragment 0: pin mux - "make GPIO1_IO04 a plain GPIO output" */
+	fragment@0 {
+		target = <&iomuxc>;
+		__overlay__ {
+			pinctrl_ebf_led: ebf-led-grp {
+				fsl,pins = <
+					/*
+					 * 0x10B0 = common GPIO output pad config:
+					 * no pull, medium speed, drive strength 6.
+					 * Read the "IOMUX Controller" chapter of the
+					 * i.MX6ULL reference manual if you need
+					 * pull-up / slew-rate / hysteresis changes.
+					 */
+					MX6UL_PAD_GPIO1_IO04__GPIO1_IO04	0x10B0
+				>;
+			};
+		};
+	};
+
+	/* fragment 1: the device itself - this is what probe() matches */
+	fragment@1 {
+		target-path = "/";
+		__overlay__ {
+			ebf_led: ebf-led {
+				compatible = "ebf,ebf-led";	/* must equal the driver's of_match */
+
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_ebf_led>;
+
+				/*
+				 * "gpios" (no prefix) is what
+				 * devm_gpiod_get(dev, NULL, ...) looks up.
+				 *
+				 * <&gpio1 4> = bank 1, line 4 = GPIO1_IO04
+				 *             (NOT physical pin 4)
+				 *
+				 * GPIO_ACTIVE_LOW tells the GPIO subsystem the LED
+				 * is on when the pad is driven low. The driver then
+				 * just says gpiod_set_value(1) == "on" and never
+				 * touches polarity again. That separation is the
+				 * whole point of the descriptor API.
+				 */
+				gpios = <&gpio1 4 GPIO_ACTIVE_LOW>;
+
+				status = "okay";
+			};
+		};
+	};
+};

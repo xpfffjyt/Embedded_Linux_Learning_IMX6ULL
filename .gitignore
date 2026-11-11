@@ -1,0 +1,36 @@
+# --- 编译产物（一律不提交，克隆后 make 自己生成）---
+*.o
+*.ko
+*.mod
+*.mod.c
+*.symvers
+*.order
+*.cmd
+.*.cmd
+.tmp_versions/
+modules.order
+Module.symvers
+
+# 交叉编译出来的可执行文件
+m0-hello/hello
+m0-hello/hello-static
+m4-led-driver/led_test
+
+# 设备树编译产物
+*.dtbo
+*.dtb
+
+# --- 日志与临时文件 ---
+*.log
+bootlog-*.log
+*.tmp
+*.bak
+*~
+
+# --- 编辑器 / 系统垃圾 ---
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
