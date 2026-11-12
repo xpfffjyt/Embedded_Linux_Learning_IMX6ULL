@@ -1319,6 +1319,7 @@ strace -f -p <pid>                # 系统调用级追踪
 | 21 | `无法加载文件…禁止运行脚本` / `UnauthorizedAccess` | PowerShell 执行策略 = `Restricted` | `powershell -ExecutionPolicy Bypass -File ...`，或 `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` |
 | 22 | 驱动 probe 报 `failed to get gpios: -16` | `-16` = `EBUSY`，GPIO 已被别的驱动占用 | `gpioinfo \| grep used` 找占用者，禁用对应 DT 节点/overlay（见 §10.3） |
 | 23 | overlay 装了但 `/proc/device-tree` 里没节点 | `dtc` 漏了 `-@`，或 uEnv.txt 路径写错，或没重启 | 重新按 §8.5/§10.5 走一遍，`dmesg \| grep -i overlay` |
+| 24 | Windows「此电脑」突然多出一个 `BOOT` 盘（约 40MB FAT） | **正常现象**：板子的 USB gadget（`g_multi` 的大容量存储功能）把 eMMC 的 `/boot` 分区当 U 盘暴露给 PC | 拔线即消失；**千万别格式化/删分区/删文件** —— 里面是 `uEnv.txt` + 内核 + dtbs，删了板子起不来。改文件前先在板子上 `sudo umount /boot`，避免 Windows 与板子同时写同一个 FAT |
 
 ---
 
