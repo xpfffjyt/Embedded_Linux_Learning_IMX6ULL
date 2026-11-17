@@ -273,20 +273,63 @@ sudo apt install -y build-essential git vim \
 ### 4.3 网络拓扑（桥接，同网段）
 
 ```
-Windows(宿主) ── VMware 桥接 ── Ubuntu: 192.168.1.100
+Windows(宿主) ── VMware 桥接 ── Ubuntu: <VM_IP>
                                         │
-                              ┌─────────┴─────────┐
-                        i.MX6ULL 板子: 192.168.1.50
+                              同一个路由器 / 交换机
+                                        │
+                              i.MX6ULL 板子: <BOARD_IP>
 ```
 
-板子侧配静态 IP（写进 U-Boot `bootargs` 或用 `ip` 命令临时配）：
+> ⚠️ **本文里所有 IP 都是占位符，不要照抄。** 尤其别写死成 `192.168.1.x` —— 你家和公司大概率不是这个网段（你现在这台是 `192.168.11.x`）。
+> 下文统一用 `<VM_IP>` / `<BOARD_IP>` 表示，每次换环境用下面 §4.4 的方法重新取。
+
+**首选：两边都用 DHCP，别配静态 IP。**
 
 ```bash
-# 板子上执行（eth0 名字以 ip link 为准）
-ip addr add 192.168.1.50/24 dev eth0
-ip link set eth0 up
-ping -c 3 192.168.1.100      # 必须通，不通后面全废
+# 板子上（先用 ip -br link 确认哪个网口插着线、有载波）
+sudo dhclient eth1 || sudo udhcpc -i eth1
+ip -br addr                    # 记下板子的 192.168.x.y
+ping -c 3 <VM_IP>
 ```
+
+Ubuntu VM 桥接后同样由路由器 DHCP 分配，`ip -br addr` 查它的地址即可。
+
+### 4.4 IP 地址与"换环境"（公司 ↔ 家）
+
+**结论：开发阶段不要写死 IP，用 DHCP + 每次开工查一次。** 静态 IP 只在"没有路由器的点对点直连"时才需要。
+
+| 方案 | 做法 | 适合 | 代价 |
+|---|---|---|---|
+| **A. 全 DHCP**（推荐） | 板子和 VM 都从现场路由器拿地址；每次开工 `ip -br addr` 查一下 | 公司和家都有路由器 | 每次要查 IP（30 秒） |
+| **B. mDNS 名字**（A 的加强版） | 两边装 `avahi-daemon`（板子再加 `nss-mdns`），之后用 `npi.local` / `ubuntu.local` 代替 IP | 懒得记 IP | 多装两个包；U-Boot 用不了 |
+| **C. 随身实验室** | 一个 USB 网卡 + 一根网线直连板子，固定 `10.10.10.1` / `10.10.10.2`，VM 桥接这块 USB 网卡 | **经常两地跑、想完全脱离现场网络** | 要买个 USB 网卡（几十元），VM 需配双网卡（一块 NAT 上网 + 一块接板子） |
+| **D. 写死静态 IP** | `ip addr add ...` / 改 `/etc/network/interfaces` | ❌ 不推荐 | 换网段必失效，排查半天 |
+
+**换环境 30 秒检查清单**（每次到新地方照做）：
+
+```bash
+# 1) VM（Ubuntu）里：拿到自己的地址
+ip -br addr | grep -v ' lo '
+# 2) 板子上：先看哪个网口有载波，再拿地址
+cat /sys/class/net/eth1/carrier ; cat /sys/class/net/eth2/carrier
+sudo dhclient eth1 || sudo udhcpc -i eth1
+ip -br addr
+# 3) 互通验证（双向都要测，NFS/tftp 是板子主动连 VM）
+ping -c 2 <VM_IP>          # 板子 → VM
+ping -c 2 <BOARD_IP>       # VM → 板子
+```
+
+**U-Boot 阶段同理，用 `dhcp` 而不是 `setenv ipaddr` 写死：**
+
+```text
+=> dhcp                       # 由 DHCP 拿到 ipaddr / netmask / gatewayip
+=> setenv serverip <VM_IP>    # 这个只能手填（DHCP 给的是路由器地址，不是你的 Ubuntu）
+=> tftp 0x80800000 zImage
+```
+
+> ⚠️ 不要 `saveenv` 保存 `ipaddr` —— 在办公室存进去的地址，拿回家就是错的，而 U-Boot 不会自己纠正。每次 `dhcp` 一下最省心。
+
+> 💡 有个例外：板子 USB-C 那个 gadget 网卡是固定的 `192.168.7.2`（`usb0`），不随环境变化。可惜你这台 Windows 上没枚举出来（没装 RNDIS 驱动），否则它会是"最省事的一条直连通道"。想折腾可以研究，但不建议在 M0 之前花时间。
 
 ---
 
