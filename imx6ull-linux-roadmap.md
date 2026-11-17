@@ -329,6 +329,9 @@ ping -c 2 <BOARD_IP>       # VM → 板子
 
 > ⚠️ 不要 `saveenv` 保存 `ipaddr` —— 在办公室存进去的地址，拿回家就是错的，而 U-Boot 不会自己纠正。每次 `dhcp` 一下最省心。
 
+> 🚫 **更别把 NFS 写进 `/etc/fstab`**。比如 fstab 里有 `192.168.11.23:/home/x/imx6ull/nfsroot /mnt nfs defaults 0 0`，那当你把板子拿到没有那台 VM 的网络里，**开机会卡在等挂载**（systemd 默认 90 秒超时），严重时直接掉进 emergency mode —— 而你这时又没有 UART 可看，只能瞪眼。
+> 正确做法：**手动 `mount`**；确实要自动挂，就用 `noauto,x-systemd.automount,x-systemd.idle-timeout=60`，只在真正访问 `/mnt` 时才去连，连不上也不影响开机。
+
 > 💡 有个例外：板子 USB-C 那个 gadget 网卡是固定的 `192.168.7.2`（`usb0`），不随环境变化。可惜你这台 Windows 上没枚举出来（没装 RNDIS 驱动），否则它会是"最省事的一条直连通道"。想折腾可以研究，但不建议在 M0 之前花时间。
 
 ---
